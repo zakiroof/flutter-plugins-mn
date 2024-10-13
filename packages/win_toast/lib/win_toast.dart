@@ -186,6 +186,19 @@ class WinToast {
     );
   }
 
+  Future<void> showScheduledToast({
+    required String xml,
+    required DateTime datetime,
+  }) async {
+    if (!_supportToast) {
+      return;
+    }
+    await _channel.invokeMethod<int>("showScheduledToast", {
+      'xml': xml,
+      'time': datetime.millisecondsSinceEpoch ~/ 1000,
+    });
+  }
+
   /// Clear all notifications.
   Future<void> clear() {
     return _channel.invokeMethod('clear');

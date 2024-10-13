@@ -185,6 +185,25 @@ void WinToastPlugin::HandleMethodCall(
       DesktopNotificationManagerCompat::CreateToastNotifier().Show(notification);
       result->Success();
     WIN_TOAST_RESULT_END
+  } else if (method_call.method_name() == "showScheduledToast") {
+    WIN_TOAST_RESULT_START
+      auto *arguments = std::get_if<flutter::EncodableMap>(method_call.arguments());
+      auto xml = std::get<std::string>(arguments->at(flutter::EncodableValue("xml")));
+      auto time = std::get<int32_t>(arguments->at(flutter::EncodableValue("time")));
+
+      // Construct the toast template
+      XmlDocument doc;
+      doc.LoadXml(utf8_to_wide(xml));
+
+      auto time_t = std::time_t(time);
+      time_point = clock::from_time_t(time_t);
+
+      // Construct the notification
+      ScheduledToastNotification notification{doc, time_point};
+
+      DesktopNotificationManagerCompat::CreateToastNotifier().AddToSchedule(notification);
+      result->Success();
+    WIN_TOAST_RESULT_END
   } else if (method_call.method_name() == "dismiss") {
     WIN_TOAST_RESULT_START
       auto *arguments = std::get_if<flutter::EncodableMap>(method_call.arguments());
