@@ -3,8 +3,12 @@ import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:win_toast/src/templates.dart';
+import 'package:win_toast/src/scheduled_toast.dart';
+import 'package:win_toast/src/notification_setting.dart';
 
 export 'src/templates.dart';
+export 'src/scheduled_toast.dart';
+export 'src/notification_setting.dart';
 
 enum DismissReason {
   userCanceled,
@@ -186,17 +190,44 @@ class WinToast {
     );
   }
 
-  Future<void> showScheduledToast({
+  Future<void> addToSchedule({
     required String xml,
-    required DateTime datetime,
+    required DateTime dateTime,
+    String? tag,
+    String? group,
   }) async {
     if (!_supportToast) {
       return;
     }
-    await _channel.invokeMethod<int>("showScheduledToast", {
+    await _channel.invokeMethod<int>("addToSchedule", {
       'xml': xml,
-      'time': datetime.millisecondsSinceEpoch ~/ 1000,
+      'time': dateTime.millisecondsSinceEpoch ~/ 1000,
+      'tag': tag ?? '',
+      'group': group ?? '',
     });
+  }
+
+  Future<List<ScheduledToast>> getScheduledToasts() async {
+    final toasts = await _channel.invokeListMethod("getScheduledToasts");
+    return toasts
+        ?.cast<Map<Object?, Object?>>()
+        .map((e) => ScheduledToast.fromJson(e.cast<String, Object?>()))
+        .toList() ?? [];
+  }
+
+  Future<void> removeFromSchedule({
+    String? tag,
+    String? group,
+  }) async {
+    await _channel.invokeMethod("removeFromSchedule", {
+      'tag': tag ?? '',
+      'group': group ?? '',
+    });
+  }
+
+  Future<NotificationSetting> getSetting() async {
+    final value = await _channel.invokeMethod<int>("setting");
+    return NotificationSetting.from(value!);
   }
 
   /// Clear all notifications.

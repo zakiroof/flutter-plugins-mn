@@ -185,24 +185,66 @@ void WinToastPlugin::HandleMethodCall(
       DesktopNotificationManagerCompat::CreateToastNotifier().Show(notification);
       result->Success();
     WIN_TOAST_RESULT_END
-  } else if (method_call.method_name() == "showScheduledToast") {
+  } else if (method_call.method_name() == "addToSchedule") {
     WIN_TOAST_RESULT_START
       auto *arguments = std::get_if<flutter::EncodableMap>(method_call.arguments());
       auto xml = std::get<std::string>(arguments->at(flutter::EncodableValue("xml")));
       auto time = std::get<int32_t>(arguments->at(flutter::EncodableValue("time")));
+      auto tag = std::get<std::string>(arguments->at(flutter::EncodableValue("tag")));
+      auto group = std::get<std::string>(arguments->at(flutter::EncodableValue("group")));
 
       // Construct the toast template
       XmlDocument doc;
       doc.LoadXml(utf8_to_wide(xml));
 
       auto time_t = std::time_t(time);
-      time_point = clock::from_time_t(time_t);
+      auto time_point = clock::from_time_t(time_t);
 
       // Construct the notification
       ScheduledToastNotification notification{doc, time_point};
 
+      if (!tag.empty()) {
+        notification.Tag(utf8_to_wide(tag));
+      }
+      if (!group.empty()) {
+        notification.Group(utf8_to_wide(group));
+      }
+
       DesktopNotificationManagerCompat::CreateToastNotifier().AddToSchedule(notification);
       result->Success();
+    WIN_TOAST_RESULT_END
+  } else if (method_call.method_name() == "getScheduledToasts") {
+    WIN_TOAST_RESULT_START
+      flutter::EncodableList out;
+      auto toasts = DesktopNotificationManagerCompat::CreateToastNotifier()
+              .GetScheduledToastNotifications();
+      for(ScheduledToastNotification toast : toasts) {
+        flutter::EncodableMap map;
+        map[flutter::EncodableValue("Group")] = winrt::to_string(toast.Group());
+        map[flutter::EncodableValue("Tag")] = winrt::to_string(toast.Tag());
+        out.push_back(map);
+      }
+      result->Success(out);
+    WIN_TOAST_RESULT_END
+  } else if (method_call.method_name() == "removeFromSchedule") {
+    WIN_TOAST_RESULT_START
+      auto *arguments = std::get_if<flutter::EncodableMap>(method_call.arguments());
+      auto tag = std::get<std::string>(arguments->at(flutter::EncodableValue("tag")));
+      auto group = std::get<std::string>(arguments->at(flutter::EncodableValue("group")));
+
+      auto toasts = DesktopNotificationManagerCompat::CreateToastNotifier()
+              .GetScheduledToastNotifications();
+      for(ScheduledToastNotification toast : toasts) {
+        if(toast.Group() == winrt::to_hstring(group) && toast.Tag() == winrt::to_hstring(tag)) {
+          DesktopNotificationManagerCompat::CreateToastNotifier().RemoveFromSchedule(toast);
+        }
+      }
+      result->Success();
+    WIN_TOAST_RESULT_END
+  } else if (method_call.method_name() == "setting") {
+    WIN_TOAST_RESULT_START
+      auto setting = DesktopNotificationManagerCompat::CreateToastNotifier().Setting();
+      result->Success(flutter::EncodableValue(static_cast<int>(setting)));
     WIN_TOAST_RESULT_END
   } else if (method_call.method_name() == "dismiss") {
     WIN_TOAST_RESULT_START
